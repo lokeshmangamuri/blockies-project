@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Diagnose the Blocky</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <style>
+    body {
+      background: url('your-background.jpg') no-repeat center center fixed;
+      background-size: cover;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+    }
+
+    .diagnosis-image {
+      width: 220px;
+      height: 220px;
+      object-fit: contain;
+      margin: 20px auto;
+      display: block;
+      border-radius: 10px;
+      background: #f0f8ff;
+      padding: 10px;
+      box-shadow: 0px 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .card { border-radius: 15px; }
+
+    .choice-card {
+      background-color: #e8f5e9;
+      border: 2px solid transparent;
+      border-radius: 10px;
+      padding: 15px;
+      text-align: center;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+    .choice-card:hover {
+      background-color: #dcedc8;
+      border: 2px solid #4CAF50;
+    }
+    .choice-card.selected {
+      background-color: #a5d6a7;
+      border-color: #388e3c;
+    }
+
+    .select-diagnosis {
+      background: linear-gradient(to right, #e3f2fd, #bbdefb);
+      padding: 10px;
+      border-radius: 10px;
+      font-weight: bold;
+      font-size: 18px;
+      color: #1565c0;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .bonus-box, .timer-box {
+      position: fixed;
+      bottom: 15px;
+      padding: 8px 15px;
+      background-color: #1976d2;
+      color: white;
+      border-radius: 8px;
+      font-size: 16px;
+    }
+
+    .bonus-box { right: 15px; }
+    .timer-box { left: 15px; }
+
+    .fixed-container { max-width: 1200px; width: 100%; }
+  </style>
+</head>
+<body>
+
+<div class="container fixed-container my-4">
+  <div class="row align-items-center justify-content-center">
+    <div class="col-md-12">
+      <div class="card shadow-lg p-4 bg-white bg-opacity-75">
+        <div class="mb-4" style="height: 6px; background: #f0f0f0; border-radius: 10px;">
+          <div id="progressBar" style="height: 100%; width: 0%; background: #3b82f6; border-radius: 10px;"></div>
+        </div>
+
+        <h5 class="text-center text-primary" id="patientId">Patient ID: Loading...</h5>
+
+        <!-- Main + Result Images -->
+        <div class="row justify-content-center">
+          <div class="col-6 col-md-2 text-center">
+            <img id="diagnosisImage" src="" alt="Diagnosis Image" class="diagnosis-image">
+            <p class="text-muted mt-2">Diagnosis Image</p>
+          </div>
+          <div class="col-6 col-md-2 text-center">
+            <img id="result1" src="" alt="Result 1" class="diagnosis-image">
+            <p class="text-muted mt-2">Spherical</p>
+          </div>
+          <div class="col-6 col-md-2 text-center">
+            <img id="result2" src="" alt="Result 2" class="diagnosis-image">
+            <p class="text-muted mt-2">ill_shperical</p>
+          </div>
+          <div class="col-6 col-md-2 text-center">
+            <img id="result3" src="" alt="Result 3" class="diagnosis-image">
+            <p class="text-muted mt-2">bending</p>
+          </div>
+          <div class="col-6 col-md-2 text-center">
+            <img id="result4" src="" alt="Result 4" class="diagnosis-image">
+            <p class="text-muted mt-2">arm_position</p>
+          </div>
+        </div>
+
+        <!-- Diagnosis Form -->
+        <div class="select-diagnosis">Select Your Diagnosis</div>
+        <form id="diagnosisForm">
+          <div class="row">
+            <div class="col-6">
+              <div class="choice-card" id="labelHealthy">
+                <input type="radio" name="diagnosis" value="Healthy" required>
+                Healthy
+              </div>
+            </div>
+            <div class="col-6">
+              <div class="choice-card" id="labelOCDEgen">
+                <input type="radio" name="diagnosis" value="OCDEgen">
+                OCDEgen
+              </div>
+            </div>
+          </div>
+        </form>
+
+        <div class="text-center mt-4">
+          <button class="btn btn-outline-secondary me-3" id="prevBtn" onclick="previousImage()">⏮️ Previous</button>
+          <button class="btn btn-primary" id="nextBtn" onclick="nextImage()">Next ⏭️</button>
+        </div>
+
+        <div class="text-center mt-3 text-muted" id="questionCounter">Question 0 of 20</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Timer and Bonus -->
+<div class="bonus-box">💶 Bonus: 4,50€</div>
+<div class="timer-box">⏱️ Time: <span id="timer">0:00</span></div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyBBSTR6gfl409gZgpZSIMxCFOgvLjAs9g8",
+    authDomain: "blockies-project.firebaseapp.com",
+    databaseURL: "https://blockies-project-default-rtdb.firebaseio.com",
+    projectId: "blockies-project",
+    storageBucket: "blockies-project.appspot.com",
+    messagingSenderId: "1057832880170",
+    appId: "1:1057832880170:web:16d014070ccc368823db53",
+    measurementId: "G-59GJPCQWCM"
+  };
+  firebase.initializeApp(firebaseConfig);
+
+  const images = [
+    "img0.png", "img1.png", "img2.png", "img3.png", "img4.png",
+    "img5.png", "img6.png", "img7.png", "img8.png", "img9.png",
+    "img10.png", "img11.png", "img12.png", "img13.png", "img14.png",
+    "img15.png", "img16.png", "img17.png", "img18.png", "img19.png",
+    "img20.png"
+  ];
+
+  const resultImages = [
+    ["res0_1.PNG", "res0_2.PNG", "res0_3.PNG", "res0_4.PNG"],
+    ["res1_1.PNG", "res1_2.PNG", "res1_3.PNG", "res1_4.PNG"],
+    ["res2_1.PNG", "res2_2.PNG", "res2_3.PNG", "res2_4.PNG"],
+    ["res3_1.PNG", "res3_2.PNG", "res3_3.PNG", "res3_4.PNG"],
+    ["res4_1.PNG", "res4_2.PNG", "res4_3.PNG", "res4_4.PNG"],
+    ["res5_1.PNG", "res5_2.PNG", "res5_3.PNG", "res5_4.PNG"],
+    ["res6_1.PNG", "res6_2.PNG", "res6_3.PNG", "res6_4.PNG"],
+    ["res7_1.PNG", "res7_2.PNG", "res7_3.PNG", "res7_4.PNG"],
+    ["res8_1.PNG", "res8_2.PNG", "res8_3.PNG", "res8_4.PNG"],
+    ["res9_1.PNG", "res9_2.PNG", "res9_3.PNG", "res9_4.PNG"],
+    ["res10_1.PNG", "res10_2.PNG", "res10_3.PNG", "res10_4.PNG"],
+    ["res11_1.PNG", "res11_2.PNG", "res11_3.PNG", "res11_4.PNG"],
+    ["res12_1.PNG", "res12_2.PNG", "res12_3.PNG", "res12_4.PNG"],
+    ["res13_1.PNG", "res13_2.PNG", "res13_3.PNG", "res13_4.PNG"],
+    ["res14_1.PNG", "res14_2.PNG", "res14_3.PNG", "res14_4.PNG"],
+    ["res15_1.PNG", "res15_2.PNG", "res15_3.PNG", "res15_4.PNG"],
+    ["res16_1.PNG", "res16_2.PNG", "res16_3.PNG", "res16_4.PNG"],
+    ["res17_1.PNG", "res17_2.PNG", "res17_3.PNG", "res17_4.PNG"],
+    ["res18_1.PNG", "res18_2.PNG", "res18_3.PNG", "res18_4.PNG"],
+    ["res19_1.PNG", "res19_2.PNG", "res19_3.PNG", "res19_4.PNG"],
+    ["res20_1.PNG", "res20_2.PNG", "res20_3.PNG", "res20_4.PNG"]
+  ];
+
+  let currentIndex = parseInt(localStorage.getItem('currentIndex') || "0");
+  let responses = JSON.parse(localStorage.getItem('userResponses') || "[]");
+  const userId = localStorage.getItem('userId') || "Unknown";
+
+  const img = document.getElementById('diagnosisImage');
+  const resultImg1 = document.getElementById('result1');
+  const resultImg2 = document.getElementById('result2');
+  const resultImg3 = document.getElementById('result3');
+  const resultImg4 = document.getElementById('result4');
+  const progressBar = document.getElementById('progressBar');
+  const questionCounter = document.getElementById('questionCounter');
+
+  document.getElementById("patientId").textContent = "Patient ID: " + userId;
+
+  function loadPage() {
+    img.src = images[currentIndex];
+    const results = resultImages[currentIndex];
+    resultImg1.src = results[0];
+    resultImg2.src = results[1];
+    resultImg3.src = results[2];
+    resultImg4.src = results[3];
+    progressBar.style.width = `${((currentIndex + 1) / images.length) * 100}%`;
+    questionCounter.textContent = `Question ${currentIndex + 1} of ${images.length}`;
+
+    document.getElementById('prevBtn').disabled = currentIndex === 0;
+    document.getElementById('nextBtn').textContent = currentIndex === images.length - 1 ? "Submit ✅" : "Next ⏭️";
+
+    const prev = responses[currentIndex]?.answer;
+    if (prev) {
+      document.querySelectorAll('.choice-card').forEach(c => c.classList.remove('selected'));
+      const card = document.querySelector(`input[value="${prev}"]`)?.parentElement;
+      if (card) {
+        card.classList.add("selected");
+        card.querySelector("input").checked = true;
+      }
+    }
+  }
+
+  function nextImage() {
+    const selected = document.querySelector('input[name="diagnosis"]:checked');
+    if (!selected) {
+      alert("Please select an option before continuing!");
+      return;
+    }
+
+    responses[currentIndex] = {
+      patientId: userId,
+      answer: selected.value
+    };
+    localStorage.setItem('userResponses', JSON.stringify(responses));
+
+    if (currentIndex === images.length - 1) {
+      submitAnswers();
+    } else {
+      currentIndex++;
+      localStorage.setItem('currentIndex', currentIndex);
+      location.reload();
+    }
+  }
+
+  function previousImage() {
+    if (currentIndex > 0) {
+      currentIndex--;
+      localStorage.setItem('currentIndex', currentIndex);
+      location.reload();
+    }
+  }
+
+  function submitAnswers() {
+    fetch("http://localhost:3000/submit", {
+      method: "POST",
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: userId,
+        studyId: "withAI",
+        responses: responses
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      alert("Submitted successfully!");
+      const tempUserId = userId;
+      localStorage.clear();
+      localStorage.setItem("userId", tempUserId);
+      window.location.href = "homepage.html";
+    })
+    .catch(err => {
+      console.error("Error submitting:", err);
+    });
+  }
+
+  document.querySelectorAll('.choice-card').forEach(card => {
+    card.addEventListener('click', () => {
+      document.querySelectorAll('.choice-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
+      card.querySelector('input').checked = true;
+    });
+  });
+
+  let time = 0;
+  const timerElement = document.getElementById('timer');
+  setInterval(() => {
+    time++;
+    const minutes = Math.floor(time / 60);
+    const seconds = time % 60;
+    timerElement.textContent = `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
+  }, 1000);
+
+  loadPage();
+</script>
+
+</body>
+</html>
