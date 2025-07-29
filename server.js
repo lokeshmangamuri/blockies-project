@@ -6,15 +6,10 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 3000;
 
 app.use(cors());
 app.use(bodyParser.json());
-
-
-
-// Serve frontend (HTML, CSS, JS, etc.)
-app.use(express.static(path.join(__dirname, 'public')));
 
 // Connect to SQLite
 const db = new sqlite3.Database('./diagnosis.db');
@@ -75,7 +70,7 @@ app.get('/results', (req, res) => {
   });
 });
 
-// Filter
+// Filter by userId or studyId
 app.get('/filter', (req, res) => {
   const { userId, studyId } = req.query;
   let query = 'SELECT * FROM diagnoses WHERE 1=1';
@@ -97,7 +92,7 @@ app.get('/filter', (req, res) => {
   });
 });
 
-// Export CSV
+// Export to CSV
 app.get('/export', (req, res) => {
   const filePath = path.join(__dirname, 'diagnosis_export.csv');
   const header = 'userId,userEmail,studyId,questionIndex,diagnosis,aiRecommendation,timestamp\n';
@@ -114,7 +109,7 @@ app.get('/export', (req, res) => {
   });
 });
 
-// Clear all data
+// Clear data
 app.get('/clear', (req, res) => {
   db.run('DELETE FROM diagnoses', (err) => {
     if (err) return res.status(500).json({ error: err.message });
